@@ -2,7 +2,7 @@
 
 This is a project to experiment with [GPGPU](https://en.wikipedia.org/wiki/General-purpose_computing_on_graphics_processing_units) using [OpenCL](https://fr.wikipedia.org/wiki/OpenCL).
 
-Editing the `main.cpp` file will let you switch between the different examples.
+Editing the [main.cpp](main.cpp) file will let you switch between the different examples.
 
 The code of the first example comes from [this excellent tutorial](https://www.eriksmistad.no/getting-started-with-opencl-and-gpu-computing/).
 

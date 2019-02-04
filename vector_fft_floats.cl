@@ -74,7 +74,7 @@ inline void butterfly(__global struct cplx *v, int i,  struct cplx twiddle) {
 
 // This algorithm has the nice property that there is no "branch divergence":
 // all threads have the same control flow. So it seems it's the perfect candidate
-// for running on a GPU, because the parallelization if massive.
+// for running on a GPU, because the parallelization is massive.
 __kernel void kernel_func(__global const float *input, __global const struct cplx *twiddle, __global struct cplx *output) {
   
   // Get the index of the current element to be processed
