@@ -17,10 +17,16 @@
 
 
 
-// 3. This example computes the "butterfly" stage of the Cooley-Tuckey
-//    fft algorithm (bit-reversal of the input is omitted) on a vector
-//    of 8 elements:
+// 3. This example computes an fft (Cooley-Tuckey radix-2, no bit-reversal of the input)
+//    on a vector of 8 elements:
 //
-#include "main_fft_8_floats.cpp"
+//#include "main_fft_8_floats.cpp"
+
+
+
+// 4. This example computes an fft (Cooley-Tuckey radix-2, no bit-reversal of the input)
+//    on vectors of arbitrary sizes:
+//
+#include "main_fft_many_floats.cpp"
 
 

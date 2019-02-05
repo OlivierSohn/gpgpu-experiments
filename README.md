@@ -26,11 +26,10 @@ And using the environment variable `CL_LOG_ERRORS=stdout` made debugging kernel 
 
 # Next Steps
 
-- Find a way to do ffts of a size that is bigger than the number of threads on the GPU.
-- See if computing fft twiddle factors on the fly is any faster than fetching them from memory. (It would also make the algorithm use less memory)
-- Use memory that is closer to the GPU threads to improve performance.
-- See if there are other (open source) fft implementations on the gpu, and compare approaches.
-- Implement in-place fft.
+* See if computing fft twiddle factors on the fly is any faster than fetching them from memory. (It would also make the algorithm use less memory)
+* Use memory that is closer to the GPU threads to improve performance.
+* Compare with other (open source) fft implementations on the gpu (for example, https://github.com/clMathLibraries/clFFT)
+* Implement in-place fft.
 
 # Platforms
 

@@ -20,6 +20,18 @@ namespace imajuscule {
   }
 }
 
+// from fft.hpp
+namespace imajuscule {
+  namespace fft {
+    
+    template<typename T>
+    constexpr double getFFTEpsilon(int N) {
+      return power_of_two_exponent(N) * std::numeric_limits<T>::epsilon(); // worst case error propagation is O(log N)
+    }
+    
+  }
+}
+
 //   from fft.interface.hpp
 namespace imajuscule {
   namespace fft {

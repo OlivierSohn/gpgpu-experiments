@@ -61,7 +61,7 @@ inline void butterfly(__global struct cplx *v, int i,  struct cplx twiddle) {
  // ----++++
  // 0123
  //
- // ... and int the general case:
+ // ... and in the general case:
  //
  // ---- (i) ----++++ (i) ++++---- (i) ----++++ (i) ++++ ...
  // 0123 .....i-1             i ...    2i-1
@@ -80,19 +80,23 @@ __kernel void kernel_func(__global const float *input, __global const struct cpl
   // Get the index of the current element to be processed
   int const k = get_global_id(0); // we use a single dimension hence we pass 0
   
-  output[k] = complexFromReal(input[k]);
-  
-  // Get the total number of elements to process
-  int const Sz = get_global_size(0);
+  output[2*k]   = complexFromReal(input[2*k]);
+  output[2*k+1] = complexFromReal(input[2*k+1]);
 
-  for(int i=1; i<Sz; i <<= 1) {
+  barrier(CLK_GLOBAL_MEM_FENCE);
+  
+  int const n_global_butterflies = get_global_size(0);
+
+  for(int i=1; i<=n_global_butterflies; i <<= 1) {
     int const tmp = i*(k/i);
     int const idx = tmp + k;
 
     //assert(idx+i < Sz);
     
     int const ri = k - tmp;
-    int const tIdx = ri*((Sz/2)/i); // TODO verify, and optimize (use shifts, i is a power of 2)
+    int const tIdx = ri*(n_global_butterflies/i); // TODO optimize (use shifts, i is a power of 2)
     butterfly(output+idx, i, twiddle[tIdx]);
+
+    barrier(CLK_GLOBAL_MEM_FENCE);
   }
 }

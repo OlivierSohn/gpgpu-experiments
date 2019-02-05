@@ -112,8 +112,8 @@ int main(void) {
   CHECK_CL_ERROR(ret);
 
   // Execute the OpenCL kernel on the list
-  size_t global_item_size = input.size(); // Process the entire lists
-  size_t local_item_size = input.size();
+  size_t global_item_size = input.size()/2; // the number of butterfly operations per fft level
+  size_t local_item_size = global_item_size;
   ret = clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL,
                                &global_item_size, &local_item_size, 0, NULL, NULL);
   CHECK_CL_ERROR(ret);

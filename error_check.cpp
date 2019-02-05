@@ -15,14 +15,24 @@ void CHECK_CL_ERROR(int res) {
   kill();
 }
 
-template<typename T>
-void verifyVectorsAreEqual(std::vector<T> const & a, std::vector<T> const & b) {
-  if(a.size() != b.size()) {
-    kill();
+void verify(bool b) {
+  if(b) {
+    return;
   }
+  kill();
+}
+
+template<typename T>
+void verifyVectorsAreEqual(std::vector<T> const & a, std::vector<T> const & b, float epsilon = 1e-5) {
+  verify(a.size() == b.size());
+  
   for(int i=0; i<a.size(); ++i) {
-    if(a[i] != b[i]) {
-      std::cout << a[i] << " != " << b[i] << std::endl;
+    auto range = std::abs(a[i]) + std::abs(b[i]);
+    if(range == 0.f) {
+      continue;
+    }
+    if(std::abs(a[i]-b[i]) / range > epsilon) {
+      std::cout << i << ": " << a[i] << " != " << b[i] << std::endl;
       kill();
     }
   }
