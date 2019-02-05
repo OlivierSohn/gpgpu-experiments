@@ -11,103 +11,32 @@
 #include <CL/cl.h>
 #endif
 
+#include "error_check.cpp"
+
+#include "cpu_fft.cpp"
+#include "cpu_fft_norecursion.cpp"
+#include "bitReverse.cpp"
+
 #define MAX_SOURCE_SIZE (0x100000)
 
 constexpr auto kernel_file = "/Users/Olivier/Dev/gpgpu/vector_fft_floats.cl";
 
-void kill() {
-  assert(0);
-  throw "program error";
-}
-void CHECK_CL_ERROR(int res) {
-  if(res==CL_SUCCESS) {
-    return;
-  }
-  fprintf(stderr, "OpenCL Error %d\n", res);
-  kill();
-}
-
-template<typename T>
-void verifyVectorsAreEqual(std::vector<T> const & a, std::vector<T> const & b) {
-  if(a.size() != b.size()) {
-    kill();
-  }
-  for(int i=0; i<a.size(); ++i) {
-    if(a[i] != b[i]) {
-      std::cout << a[i] << " != " << b[i] << std::endl;
-      kill();
-    }
-  }
-}
-
-
-template<typename T>
-static std::complex<T> make_root_of_unity(unsigned int index, unsigned int size) {
-  return std::polar(1.f, -2 * static_cast<T>(M_PI) * index / size);
-}
-
-template<typename T>
-void compute_roots_of_unity(unsigned int N, std::vector<std::complex<T>> & res) {
-  auto n_roots = N/2;
-  res.reserve(n_roots);
-  for(unsigned int i=0; i<n_roots; ++i) {
-    res.push_back(make_root_of_unity<T>(i,N));
-  }
-}
-
-template<typename T>
-auto compute_roots_of_unity(unsigned int N) {
-  std::vector<std::complex<T>> res;
-  compute_roots_of_unity(N, res);
-  return std::move(res);
-}
-
-void cpu_butterfly(std::complex<float> & a, std::complex<float> & b, std::complex<float> twiddle) {
-  auto const t = b * twiddle;
-  b = a - t;
-  a += t;
-}
-
-auto complexify(std::vector<float> const & v) {
-  std::vector<std::complex<float>> output;
-  
-  output.reserve(v.size());
-  for(auto i : v) {
-    output.emplace_back(i);
-  }
-  return output;
-}
-
-/*
- This is the cpu version of the gpu kernel, to test that our program works as intended.
- */
-auto cpu_func(std::vector<float> const & input) {
-  const unsigned int Sz = input.size(); // is assumed to be a power of 2
-
-  std::vector<std::complex<float>> output = complexify(input);
-  
-  auto twiddle = compute_roots_of_unity<float>(Sz);
-  
-  for(int i=1; i<Sz; i <<= 1) {
-    for(int k = 0; k<Sz; k += 2*i) {
-      for(int l=0; l<i; ++l) {
-        int idx = k+l;
-        auto tIdx = l*((Sz/2)/i); // TODO verify
-        //std::cout << tIdx << std::endl;
-        cpu_butterfly(output[idx], output[idx+i], twiddle[tIdx]);
-      }
-    }
-  }
-
-  return output;
-}
-
 int main(void) {
   // Create the input vector
   std::vector<float> input{2.5f, 9.f, -3.f, 5.f, 10.f, 4.f, 1.f, 7.f};
+
+  // Our GPU kernel doesn't do bit-reversal of the input, so this should be done on the host.
+  // In this scope, we verify that when the input is bit-reversed prior to being fed to 'cpu_func',
+  // we get the expected result:
+  {
+    auto refForwardFft = makeRefForwardFft(input); // this implementation has been well unit-tested in another project
+    auto cpuForwardFft = cpu_func(bitReversePermutation(input));
+    verifyVectorsAreEqual(refForwardFft, cpuForwardFft);
+  }
+  
   const unsigned int Sz = input.size(); // is assumed to be a power of 2
   
-  auto twiddle = compute_roots_of_unity<float>(Sz);
+  auto twiddle = imajuscule::compute_roots_of_unity<float>(Sz);
 
   // Load the kernel source code into the array source_str
   FILE *fp;

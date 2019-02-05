@@ -8,32 +8,11 @@
 #include <CL/cl.h>
 #endif
 
+#include "error_check.cpp"
+
 #define MAX_SOURCE_SIZE (0x100000)
 
 constexpr auto kernel_file = "/Users/Olivier/Dev/gpgpu/vector_mix_floats.cl";
-
-void kill() {
-  assert(0);
-  throw "program error";
-}
-void CHECK_CL_ERROR(int res) {
-  if(res==CL_SUCCESS) {
-    return;
-  }
-  kill();
-}
-
-template<typename T>
-void verifyVectorsAreEqual(std::vector<T> const & a, std::vector<T> const & b) {
-  if(a.size() != b.size()) {
-    kill();
-  }
-  for(int i=0; i<a.size(); ++i) {
-    if(a[i] != b[i]) {
-      kill();
-    }
-  }
-}
 
 /*
  This is the cpu version of the gpu kernel, to test that our program works as intended.

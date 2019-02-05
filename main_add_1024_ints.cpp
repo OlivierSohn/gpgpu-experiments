@@ -1,5 +1,5 @@
 /*
- This code is not mine, it can be found here:
+ This code comes from this tutorial:
  https://www.eriksmistad.no/getting-started-with-opencl-and-gpu-computing/
  
  It allows to start doing GPGPU in a minimalistic way,
