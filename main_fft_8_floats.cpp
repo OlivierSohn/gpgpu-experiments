@@ -1,25 +1,5 @@
 
-#include <complex>
-#include <stdio.h>
-#include <iostream>
-#include <stdlib.h>
-#include <vector>
-
-#ifdef __APPLE__
-#include <OpenCL/opencl.h>
-#else
-#include <CL/cl.h>
-#endif
-
-#include "error_check.cpp"
-
-#include "cpu_fft.cpp"
-#include "cpu_fft_norecursion.cpp"
-#include "bitReverse.cpp"
-
-#define MAX_SOURCE_SIZE (0x100000)
-
-constexpr auto kernel_file = "/Users/Olivier/Dev/gpgpu/vector_fft_floats.cl";
+constexpr auto kernel_file = "vector_fft_floats.cl";
 
 int main(void) {
   // Create the input vector
@@ -30,7 +10,7 @@ int main(void) {
   // we get the expected result:
   {
     auto refForwardFft = makeRefForwardFft(input); // this implementation has been well unit-tested in another project
-    auto cpuForwardFft = cpu_func(bitReversePermutation(input));
+    auto cpuForwardFft = cpu_fft_norecursion(bitReversePermutation(input));
     verifyVectorsAreEqual(refForwardFft, cpuForwardFft);
   }
   
@@ -38,20 +18,6 @@ int main(void) {
   
   auto twiddle = imajuscule::compute_roots_of_unity<float>(Sz);
 
-  // Load the kernel source code into the array source_str
-  FILE *fp;
-  char *source_str;
-  size_t source_size;
-  
-  fp = fopen(kernel_file, "r");
-  if (!fp) {
-    fprintf(stderr, "Failed to load kernel.\n");
-    exit(1);
-  }
-  source_str = (char*)malloc(MAX_SOURCE_SIZE);
-  source_size = fread( source_str, 1, MAX_SOURCE_SIZE, fp);
-  fclose( fp );
-  
   // Get platform and device information
   cl_platform_id platform_id = NULL;
   cl_device_id device_id = NULL;
@@ -91,12 +57,17 @@ int main(void) {
   CHECK_CL_ERROR(ret);
 
   // Create a program from the kernel source
+  auto kernel_src = read_kernel(kernel_file);
+  auto kernel_c_src = kernel_src.c_str();
+  auto source_size = kernel_src.size();
   cl_program program = clCreateProgramWithSource(context, 1,
-                                                 (const char **)&source_str, (const size_t *)&source_size, &ret);
+                                                 (const char **)&kernel_c_src, (const size_t *)&source_size, &ret);
   CHECK_CL_ERROR(ret);
 
   // Build the program
-  ret = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
+  std::string options = std::string("-I ") + src_root() +
+    " -cl-denorms-are-zero -cl-strict-aliasing -cl-fast-relaxed-math";
+  ret = clBuildProgram(program, 1, &device_id, options.c_str(), NULL, NULL);
   CHECK_CL_ERROR(ret);
 
   // Create the OpenCL kernel
@@ -127,7 +98,7 @@ int main(void) {
   CHECK_CL_ERROR(ret);
 
   // The output produced by the gpu is the same as the output produced by the cpu:
-  verifyVectorsAreEqual(output, cpu_func(input));
+  verifyVectorsAreEqual(output, cpu_fft_norecursion(input));
   
   // Display the result to the screen
   /*

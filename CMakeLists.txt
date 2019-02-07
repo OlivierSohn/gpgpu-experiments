@@ -16,6 +16,8 @@ set_property( TARGET
             PROPERTY
                      CXX_STANDARD 17 )
 
+add_definitions ( -DSRC_ROOT=${CMAKE_SOURCE_DIR} )
+
 target_compile_options(gpgpu_test PUBLIC "$<$<CONFIG:DEBUG>:-g>")
 target_compile_options(gpgpu_test PUBLIC "$<$<CONFIG:RELEASE>:-ffast-math>")
 target_compile_options(gpgpu_test PUBLIC "$<$<CONFIG:RELEASE>:-O3>")

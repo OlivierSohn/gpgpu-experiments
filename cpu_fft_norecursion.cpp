@@ -18,7 +18,7 @@ auto complexify(std::vector<float> const & v) {
 /*
  This is the cpu version of the gpu kernel, to test that our program works as intended.
  */
-auto cpu_func(std::vector<float> const & input) {
+auto cpu_fft_norecursion(std::vector<float> const & input) {
   const unsigned int Sz = input.size(); // is assumed to be a power of 2
   
   std::vector<std::complex<float>> output = complexify(input);

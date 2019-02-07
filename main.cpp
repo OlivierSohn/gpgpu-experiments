@@ -1,4 +1,33 @@
 
+// common includes
+
+#include <complex>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+
+#ifdef __APPLE__
+#include <OpenCL/opencl.h>
+#else
+#include <CL/cl.h>
+#endif
+
+#include "error_check.cpp"
+
+#include "read_kernel_source.cpp"
+
+#include "math.cpp"
+#include "bitReverse.cpp"
+#include "rand.cpp"
+
+#include "cpu_fft.cpp"
+#include "cpu_fft_norecursion.cpp"
+
+
+
 //
 // GPGPU algorithms, by order of increasing (gpu kernel) complexities:
 //
@@ -25,8 +54,23 @@
 
 
 // 4. This example computes an fft (Cooley-Tuckey radix-2, no bit-reversal of the input)
-//    on vectors of arbitrary sizes:
+//    on vectors of large sizes:
 //
-#include "main_fft_many_floats.cpp"
+//#include "main_fft_many_floats.cpp"           // for 8192 fft: 1500 us kernel time
+
+
+
+// 5. This example computes an fft (Cooley-Tuckey radix-2, no bit-reversal of the input)
+//    on vectors of large sizes, using local memory to speed up the kernel.
+//
+//    Several variations are possible, by using different kernels (see inside the source)
+//
+//#include "main_fft_many_floats_local.cpp"    // for 8192 fft: 1300 us kernel time
+
+// 6. This example computes an fft (Cooley-Tuckey radix-2, no bit-reversal of the input)
+//    on vectors of large sizes, using local memory to speed up the kernel,
+//    and computing twiddle factors on the fly instead of reading them from memory:
+//
+#include "main_fft_many_floats_local_twiddles.cpp"
 
 

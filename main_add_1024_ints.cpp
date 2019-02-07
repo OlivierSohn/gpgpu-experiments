@@ -1,21 +1,12 @@
 /*
- This code comes from this tutorial:
+ This is a modified version of:
  https://www.eriksmistad.no/getting-started-with-opencl-and-gpu-computing/
  
  It allows to start doing GPGPU in a minimalistic way,
  with a very simple algorithm.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-
-#ifdef __APPLE__
-#include <OpenCL/opencl.h>
-#else
-#include <CL/cl.h>
-#endif
-
-#define MAX_SOURCE_SIZE (0x100000)
+constexpr auto kernel_file = "vector_add_kernel.cl";
 
 int main(void) {
   // Create the two input vectors
@@ -27,20 +18,6 @@ int main(void) {
     A[i] = i;
     B[i] = LIST_SIZE - i;
   }
-  
-  // Load the kernel source code into the array source_str
-  FILE *fp;
-  char *source_str;
-  size_t source_size;
-  
-  fp = fopen("/Users/Olivier/Dev/gpgpu/vector_add_kernel.cl", "r");
-  if (!fp) {
-    fprintf(stderr, "Failed to load kernel.\n");
-    exit(1);
-  }
-  source_str = (char*)malloc(MAX_SOURCE_SIZE);
-  source_size = fread( source_str, 1, MAX_SOURCE_SIZE, fp);
-  fclose( fp );
   
   // Get platform and device information
   cl_platform_id platform_id = NULL;
@@ -72,9 +49,12 @@ int main(void) {
                              LIST_SIZE * sizeof(int), B, 0, NULL, NULL);
   
   // Create a program from the kernel source
+  auto kernel_src = read_kernel(kernel_file);
+  auto kernel_c_src = kernel_src.c_str();
+  auto source_size = kernel_src.size();
   cl_program program = clCreateProgramWithSource(context, 1,
-                                                 (const char **)&source_str, (const size_t *)&source_size, &ret);
-  
+                                                 (const char **)&kernel_c_src, (const size_t *)&source_size, &ret);
+
   // Build the program
   ret = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
   

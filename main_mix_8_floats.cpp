@@ -1,18 +1,5 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <vector>
 
-#ifdef __APPLE__
-#include <OpenCL/opencl.h>
-#else
-#include <CL/cl.h>
-#endif
-
-#include "error_check.cpp"
-
-#define MAX_SOURCE_SIZE (0x100000)
-
-constexpr auto kernel_file = "/Users/Olivier/Dev/gpgpu/vector_mix_floats.cl";
+constexpr auto kernel_file = "vector_mix_floats.cl";
 
 /*
  This is the cpu version of the gpu kernel, to test that our program works as intended.
@@ -30,20 +17,6 @@ auto cpu_func(std::vector<float> const & input) {
 int main(void) {
   // Create the input vector
   std::vector<float> input{2.5f, 9.f, -3.f, 5.f, 10.f, 4.f, 1.f, 7.f};
-
-  // Load the kernel source code into the array source_str
-  FILE *fp;
-  char *source_str;
-  size_t source_size;
-  
-  fp = fopen(kernel_file, "r");
-  if (!fp) {
-    fprintf(stderr, "Failed to load kernel.\n");
-    exit(1);
-  }
-  source_str = (char*)malloc(MAX_SOURCE_SIZE);
-  source_size = fread( source_str, 1, MAX_SOURCE_SIZE, fp);
-  fclose( fp );
   
   // Get platform and device information
   cl_platform_id platform_id = NULL;
@@ -80,8 +53,11 @@ int main(void) {
   CHECK_CL_ERROR(ret);
 
   // Create a program from the kernel source
+  auto kernel_src = read_kernel(kernel_file);
+  auto kernel_c_src = kernel_src.c_str();
+  auto source_size = kernel_src.size();
   cl_program program = clCreateProgramWithSource(context, 1,
-                                                 (const char **)&source_str, (const size_t *)&source_size, &ret);
+                                                 (const char **)&kernel_c_src, (const size_t *)&source_size, &ret);
   CHECK_CL_ERROR(ret);
 
   // Build the program

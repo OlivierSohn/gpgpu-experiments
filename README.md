@@ -2,9 +2,9 @@
 
 This is a project to experiment [GPGPU](https://en.wikipedia.org/wiki/General-purpose_computing_on_graphics_processing_units) using [OpenCL](https://fr.wikipedia.org/wiki/OpenCL).
 
-Editing the [main.cpp](main.cpp) file will let you switch between the different examples. Also, you will need to edit the hardcoded paths to `*.cl` files to match the location of your files on your harddrive.
+Editing the [main.cpp](main.cpp) file will let you switch between the different examples.
 
-The code of the first example comes from [this excellent tutorial](https://www.eriksmistad.no/getting-started-with-opencl-and-gpu-computing/).
+The code of the first example is a slightly modified version of [this excellent tutorial](https://www.eriksmistad.no/getting-started-with-opencl-and-gpu-computing/).
 
 # Why?
 
@@ -26,8 +26,17 @@ And using the environment variable `CL_LOG_ERRORS=stdout` made debugging kernel 
 
 # Next Steps
 
-* See if computing fft twiddle factors on the fly is any faster than fetching them from memory. (It would also make the algorithm use less memory)
-* Use memory that is closer to the GPU threads to improve performance.
+* use images to have faster access to global memory:
+  * To have faster read only access to inputs, use an image + float4 read_imagef
+  * To have fater write to output, use an image + write_imagef
+  * read/write images are opencl 2.0 only, but in practice passing the image twice with different
+qualifiers can work, depending on the driver + hardware.
+* To do big ffts using local memory, compute local levels in chunks, and when writing back, interleave the data
+and redo the same thing (except that twiddle factors indinces computation needs to adapt) until all levels are done.
+Finallly, reorder global memory (or let the cpu do it?)
+* use inter-group synchronization to be able to use multiple work groups for a single fft.
+http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.172.2399&rep=rep1&type=pdf 
+https://www.doc.ic.ac.uk/~afd/homepages/papers/pdfs/2016/OOPSLA.pdf
 * Compare with other (open source) fft implementations on the gpu (for example, https://github.com/clMathLibraries/clFFT)
 * Implement in-place fft.
 
