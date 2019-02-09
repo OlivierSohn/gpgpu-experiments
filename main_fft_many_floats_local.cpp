@@ -4,7 +4,7 @@
 //                                                                                                        // Times for 8192 fft //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-constexpr auto kernel_file = "vector_fft_floats_multi_local.cl";               // 522 us
+//constexpr auto kernel_file = "vector_fft_floats_multi_local.cl";               // 522 us
 
 // Replace some integer operations by bitwise operations
 //constexpr auto kernel_file = "vector_fft_floats_multi_local_shifts.cl";        // 522 us
@@ -20,6 +20,8 @@ constexpr auto kernel_file = "vector_fft_floats_multi_local.cl";               /
 // write to global memory in a linear way?
 //constexpr auto kernel_file = "vector_fft_floats_multi_local_writeback.cl";       // 585 us
 
+// use coalescent reads and writes to global memory
+constexpr auto kernel_file = "vector_fft_floats_multi_local_coalesce.cl";          // 477 us
 
 void withInput(cl_context context,
                cl_device_id device_id,

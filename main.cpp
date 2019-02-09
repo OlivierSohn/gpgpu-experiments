@@ -65,12 +65,12 @@
 //
 //    Several variations are possible, by using different kernels (see inside the source)
 //
-//#include "main_fft_many_floats_local.cpp"    // for 8192 fft: 1300 us kernel time
+#include "main_fft_many_floats_local.cpp"    // for 8192 fft: 1300 us kernel time
 
 // 6. This example computes an fft (Cooley-Tuckey radix-2, no bit-reversal of the input)
 //    on vectors of large sizes, using local memory to speed up the kernel,
 //    and computing twiddle factors on the fly instead of reading them from memory:
 //
-#include "main_fft_many_floats_local_twiddles.cpp"
+//#include "main_fft_many_floats_local_twiddles.cpp"
 
 
