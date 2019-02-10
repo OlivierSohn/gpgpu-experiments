@@ -1,29 +1,29 @@
 
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                                        // Times for 8192 fft //
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                          // Times for 4096 / 8192 fft (us) //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//constexpr auto kernel_file = "vector_fft_floats_multi_local.cl";               // 522 us
+//constexpr auto kernel_file = "vector_fft_floats_multi_local.cl";               // 522
 
 // Replace some integer operations by bitwise operations
-//constexpr auto kernel_file = "vector_fft_floats_multi_local_shifts.cl";        // 522 us
+//constexpr auto kernel_file = "vector_fft_floats_multi_local_shifts.cl";        // 522
 
 // peel the loop
-//constexpr auto kernel_file = "vector_fft_floats_multi_local_shifts_peel.cl";   // 542 us
+//constexpr auto kernel_file = "vector_fft_floats_multi_local_shifts_peel.cl";   // 542
 
 // use constant memory for twiddles
-//constexpr auto kernel_file = "vector_fft_floats_multi_local_shifts_twiddlesconstant.cl";   // 520 us
+//constexpr auto kernel_file = "vector_fft_floats_multi_local_shifts_twiddlesconstant.cl";   // 520
 
 // Interestingly what I thought would be an optimization (merging the write back with the last
 // butterfly iteration) is actually worsening the performances. Maybe this is because it is faster to
 // write to global memory in a linear way?
-//constexpr auto kernel_file = "vector_fft_floats_multi_local_writeback.cl";       // 585 us
+//constexpr auto kernel_file = "vector_fft_floats_multi_local_writeback.cl";       // 585
 
 // use coalescent reads and writes to global memory
-constexpr auto kernel_file = "vector_fft_floats_multi_local_coalesce.cl";          // 477 us
+constexpr auto kernel_file = "vector_fft_floats_multi_local_coalesce.cl";          // 248 477
 
-void withInput(cl_context context,
+bool withInput(cl_context context,
                cl_device_id device_id,
                cl_command_queue command_queue,
                cl_kernel kernel,
@@ -46,7 +46,7 @@ void withInput(cl_context context,
                                sizeof(local_mem_sz), &local_mem_sz, NULL);
   if(local_mem_sz < output.size() * sizeof(decltype(output[0]))) {
     std::cout << "not enough local memory on the device!" << std::endl;
-    return;
+    return false;
   }
 
   // Our GPU kernel doesn't do bit-reversal of the input, so this should be done on the host.
@@ -157,6 +157,8 @@ void withInput(cl_context context,
   CHECK_CL_ERROR(ret);
   ret = clReleaseMemObject(output_mem_obj);
   CHECK_CL_ERROR(ret);
+  
+  return true;
 }
 
 std::string ReplaceString(std::string subject, const std::string& search,
@@ -293,14 +295,16 @@ int main(void) {
     
     const ScopedKernel sc(context, device_id, kernel_src, input.size());
 
-    withInput(context,
+    if(!withInput(context,
               device_id,
               command_queue,
               sc.kernel,
               sc.nButterfliesPerThread,
               input,
               true // set this to true to verify results
-              );
+                  )) {
+      break;
+    }
   }
   
   // Clean up

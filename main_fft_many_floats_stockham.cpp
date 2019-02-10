@@ -1,11 +1,11 @@
 
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                                   // Times for 4096 8192 fft //
+//                                                                                                        // Times for 4096 fft //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//constexpr auto kernel_file = "vector_fft_floats_multi_local_shifts_twiddles.cl";   // 472 us
-//constexpr auto kernel_file = "vector_fft_floats_multi_local_shifts_twiddles_constantinput.cl";   // 472 us
-constexpr auto kernel_file = "vector_fft_floats_multi_local_coalesce_shifts_twiddles.cl";   // 222 454 us
+//constexpr auto kernel_file = "vector_fft_floats_stockham_multi_local_coalesce.cl";          // 208 us
+constexpr auto kernel_file = "vector_fft_floats_stockham_multi_local_coalesce_shift.cl";      // 176-205 us
 
 bool withInput(cl_context context,
                cl_device_id device_id,
@@ -28,7 +28,7 @@ bool withInput(cl_context context,
   cl_int ret = clGetDeviceInfo(device_id,
                                CL_DEVICE_LOCAL_MEM_SIZE,
                                sizeof(local_mem_sz), &local_mem_sz, NULL);
-  if(local_mem_sz < output.size() * sizeof(decltype(output[0]))) {
+  if(local_mem_sz < 2 * output.size() * sizeof(decltype(output[0]))) { // factor 2 because we ping pong between buffers
     std::cout << "not enough local memory on the device!" << std::endl;
     return false;
   }
@@ -47,28 +47,38 @@ bool withInput(cl_context context,
     std::cout << "- ok" << std::endl;
   }
   
+  auto twiddle = imajuscule::compute_roots_of_unity<float>(input.size());
+
   // Create memory buffers on the device for each vector
   cl_mem input_mem_obj = clCreateBuffer(context, CL_MEM_READ_ONLY,
                                         input.size() * sizeof(decltype(input[0])), NULL, &ret);
+  CHECK_CL_ERROR(ret);
+  cl_mem twiddle_mem_obj = clCreateBuffer(context, CL_MEM_READ_ONLY,
+                                          twiddle.size() * sizeof(decltype(twiddle[0])), NULL, &ret);
   CHECK_CL_ERROR(ret);
   cl_mem output_mem_obj = clCreateBuffer(context, CL_MEM_WRITE_ONLY,
                                          output.size() * sizeof(decltype(output[0])), NULL, &ret);
   CHECK_CL_ERROR(ret);
   
-  // Copy the input to its memory buffers.
+  // Copy the input and twiddles to their respective memory buffers.
   // This can crash if the GPU has not enough memory.
   ret = clEnqueueWriteBuffer(command_queue, input_mem_obj, CL_TRUE, 0,
                              input.size() * sizeof(decltype(input[0])), &input[0], 0, NULL, NULL);
   CHECK_CL_ERROR(ret);
+  ret = clEnqueueWriteBuffer(command_queue, twiddle_mem_obj, CL_TRUE, 0,
+                             twiddle.size()*sizeof(decltype(twiddle[0])), &twiddle[0], 0, NULL, NULL);
+  CHECK_CL_ERROR(ret);
   
   // Set the arguments of the kernel
-  ret = clSetKernelArg(kernel, 0, output.size() * sizeof(decltype(output[0])), NULL); // local memory
+  ret = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&input_mem_obj);
   CHECK_CL_ERROR(ret);
-  ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&input_mem_obj);
+  ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&twiddle_mem_obj);
   CHECK_CL_ERROR(ret);
   ret = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&output_mem_obj);
   CHECK_CL_ERROR(ret);
-  
+  ret = clSetKernelArg(kernel, 3, 2*sizeof(float) * 2*input.size(), NULL); // pingpong buffer
+  CHECK_CL_ERROR(ret);
+
   // Execute the OpenCL kernel
   size_t global_item_size = input.size()/(2*nButterfliesPerThread);
   size_t local_item_size = global_item_size;
@@ -112,7 +122,7 @@ bool withInput(cl_context context,
     std::cout << "verifying results... " << std::endl;
     // The output produced by the gpu is the same as the output produced by the cpu:
     verifyVectorsAreEqual(output,
-                          cpu_fft_norecursion(input),
+                          makeRefForwardFft(input),
                           // getFFTEpsilon is assuming that the floating point errors "add up"
                           // at every butterfly operation, but like said here :
                           // https://floating-point-gui.de/errors/propagation/
@@ -120,16 +130,18 @@ bool withInput(cl_context context,
                           // which are used in butterfly operations.
                           // Hence I replace the following line with 0.001f:
                           //20.f*getFFTEpsilon<float>(input.size()),
-                          0.01f
+                          0.001f
                           );
   }
   
   // Cleanup
   ret = clReleaseMemObject(input_mem_obj);
   CHECK_CL_ERROR(ret);
+  ret = clReleaseMemObject(twiddle_mem_obj);
+  CHECK_CL_ERROR(ret);
   ret = clReleaseMemObject(output_mem_obj);
   CHECK_CL_ERROR(ret);
-
+  
   return true;
 }
 
@@ -152,7 +164,7 @@ struct ScopedKernel {
   ScopedKernel(cl_context context, cl_device_id device_id, std::string const & kernel_src, size_t const input_size) {
     using namespace imajuscule;
     int const nButterflies = input_size/2;
-
+    
     cl_int ret;
 
     // TODO if local memory can hold the output, use the kernel with local memory,
@@ -164,15 +176,7 @@ struct ScopedKernel {
     //   do the writeback of the omitted portion
 
     for(nButterfliesPerThread = 1;;) {
-      char buf[256];
-      memset(buf, 0, sizeof(buf));
-      snprintf(buf, sizeof(buf), "%a", (float)(-M_PI/nButterflies));
-      
-      std::string const replaced_str = ReplaceString(ReplaceString(ReplaceString(ReplaceString(kernel_src,
-                                                                                               "replace_MINUS_PI_over_N_GLOBAL_BUTTERFLIES",
-                                                                                               buf),
-                                                                                 "replace_N_GLOBAL_BUTTERFLIES",
-                                                                                 std::to_string(nButterflies)),
+      std::string const replaced_str = ReplaceString(ReplaceString(kernel_src,
                                                                    "replace_LOG2_N_GLOBAL_BUTTERFLIES",
                                                                    std::to_string(power_of_two_exponent(nButterflies))),
                                                      "replace_N_LOCAL_BUTTERFLIES",
@@ -187,8 +191,6 @@ struct ScopedKernel {
       
       // Build the program
       ret = clBuildProgram(program, 1, &device_id,
-                           // -cl-fast-relaxed-math makes the twiddle fators computation a little faster
-                           // but a little less accurate too.
                            "-I /Users/Olivier/Dev/gpgpu/ -cl-denorms-are-zero -cl-strict-aliasing -cl-fast-relaxed-math",
                            NULL, NULL);
       CHECK_CL_ERROR(ret);
@@ -298,6 +300,6 @@ int main(void) {
   CHECK_CL_ERROR(ret);
   ret = clReleaseContext(context);
   CHECK_CL_ERROR(ret);
-
+  
   return 0;
 }

@@ -1,11 +1,9 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                                   // Times for 4096 8192 fft //
+//                                                                                                        // Times for 4096 fft //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//constexpr auto kernel_file = "vector_fft_floats_multi_local_shifts_twiddles.cl";   // 472 us
-//constexpr auto kernel_file = "vector_fft_floats_multi_local_shifts_twiddles_constantinput.cl";   // 472 us
-constexpr auto kernel_file = "vector_fft_floats_multi_local_coalesce_shifts_twiddles.cl";   // 222 454 us
+constexpr auto kernel_file = "vector_fft_floats_stockham_multi_local_coalesce_shift_twiddles_separate.cl";   // 155
 
 bool withInput(cl_context context,
                cl_device_id device_id,
@@ -21,14 +19,14 @@ bool withInput(cl_context context,
 
   verify(is_power_of_two(input.size()) && input.size() >= 2);
   
-  std::vector<std::complex<float>> output;
-  output.resize(input.size());
+  std::vector<float> output;
+  output.resize(2*input.size());
   
   cl_ulong local_mem_sz;
   cl_int ret = clGetDeviceInfo(device_id,
                                CL_DEVICE_LOCAL_MEM_SIZE,
                                sizeof(local_mem_sz), &local_mem_sz, NULL);
-  if(local_mem_sz < output.size() * sizeof(decltype(output[0]))) {
+  if(local_mem_sz < 2 * output.size() * sizeof(decltype(output[0]))) {
     std::cout << "not enough local memory on the device!" << std::endl;
     return false;
   }
@@ -62,13 +60,13 @@ bool withInput(cl_context context,
   CHECK_CL_ERROR(ret);
   
   // Set the arguments of the kernel
-  ret = clSetKernelArg(kernel, 0, output.size() * sizeof(decltype(output[0])), NULL); // local memory
+  ret = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&input_mem_obj);
   CHECK_CL_ERROR(ret);
-  ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&input_mem_obj);
+  ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&output_mem_obj);
   CHECK_CL_ERROR(ret);
-  ret = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&output_mem_obj);
+  ret = clSetKernelArg(kernel, 2, 2*sizeof(float) * 2*input.size(), NULL); // local memory
   CHECK_CL_ERROR(ret);
-  
+
   // Execute the OpenCL kernel
   size_t global_item_size = input.size()/(2*nButterfliesPerThread);
   size_t local_item_size = global_item_size;
@@ -111,8 +109,8 @@ bool withInput(cl_context context,
   if(verifyResults) {
     std::cout << "verifying results... " << std::endl;
     // The output produced by the gpu is the same as the output produced by the cpu:
-    verifyVectorsAreEqual(output,
-                          cpu_fft_norecursion(input),
+    verifyVectorsAreEqual(unseparate(output),
+                          makeRefForwardFft(input),
                           // getFFTEpsilon is assuming that the floating point errors "add up"
                           // at every butterfly operation, but like said here :
                           // https://floating-point-gui.de/errors/propagation/
@@ -129,7 +127,7 @@ bool withInput(cl_context context,
   CHECK_CL_ERROR(ret);
   ret = clReleaseMemObject(output_mem_obj);
   CHECK_CL_ERROR(ret);
-
+  
   return true;
 }
 
@@ -168,7 +166,9 @@ struct ScopedKernel {
       memset(buf, 0, sizeof(buf));
       snprintf(buf, sizeof(buf), "%a", (float)(-M_PI/nButterflies));
       
-      std::string const replaced_str = ReplaceString(ReplaceString(ReplaceString(ReplaceString(kernel_src,
+      std::string const replaced_str = ReplaceString(ReplaceString(ReplaceString(ReplaceString(ReplaceString(kernel_src,
+                                                                                                             "replace_INPUT_SIZE",
+                                                                                                             std::to_string(input_size)),
                                                                                                "replace_MINUS_PI_over_N_GLOBAL_BUTTERFLIES",
                                                                                                buf),
                                                                                  "replace_N_GLOBAL_BUTTERFLIES",

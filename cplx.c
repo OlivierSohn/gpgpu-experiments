@@ -74,6 +74,7 @@ inline void butterfly(__local struct cplx *v, int const i, const struct cplx twi
   cplxAddAssign(&v[0], t);
 }
 
+
 ////////////////////////////////////////////////////////////////////
 // Functions used when performing the butterfly on global memory
 ////////////////////////////////////////////////////////////////////
@@ -86,4 +87,22 @@ inline void butterfly_global(__global struct cplx *v, int i,  struct cplx twiddl
   struct cplx const t = cplxMult(v[i], twiddle);
   v[i] = cplxSub(v[0], t);
   cplxAddAssign_global(&v[0], t);
+}
+
+
+////////////////////////////////////////////////////////////////////
+// Functions used when performing the butterfly out of place
+////////////////////////////////////////////////////////////////////
+
+inline void butterfly_outofplace(int const idx,
+                               int const idxD,
+                               __local struct cplx const *from,
+                               __local struct cplx *to,
+                               int const i,
+                               int const Ns,
+                               const struct cplx twiddle) {
+  struct cplx const t = cplxMult(from[idx+i], twiddle);
+  struct cplx const fi = from[idx];
+  to[idxD+Ns] = cplxSub(fi, t);
+  to[idxD]    = cplxAdd(fi, t);
 }

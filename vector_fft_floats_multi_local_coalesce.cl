@@ -2,29 +2,6 @@
 
 #define N_LOCAL_BUTTERFLIES replace_N_LOCAL_BUTTERFLIES // must be a power of 2
 
-/*
- Future work:
- - To restore the barrier omission for first levels, we can change the arrangement
-   of the input so that, in case get_global_size(0)==4, indexes are:
-       0  4 8 12  1 5 9 13  2 6 10 14  3 7 11 15
- LEVEL1:
- t0    1          2         3          4
- t1       1         2         3          4
- ..
- LEVEL2:
- t0    1          3         2          4
- t1       1         3         2          4
- ..
- LEVEL3:
- t0    1  2       3 4
- t1
- 
- n_global_butterflies = 8
- 
-   This way, our thread will have written to local memory all the memory locations
-   used for the first levels.
-   Note that this will also allow to remove the last barrier.
- */
 __kernel void kernel_func(__local struct cplx* output, __global const float *input, __global const struct cplx *twiddle, __global struct cplx *global_output) {
   int const k = get_global_id(0);
   int const base_idx = k * N_LOCAL_BUTTERFLIES;

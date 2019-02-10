@@ -1,19 +1,10 @@
 
-constexpr auto kernel_file = "vector_fft_floats.cl";
+constexpr auto kernel_file = "vector_fft_floats_stockham.cl";
 
 int main(void) {
   // Create the input vector
   std::vector<float> input{2.5f, 9.f, -3.f, 5.f, 10.f, 4.f, 1.f, 7.f};
 
-  // Our GPU kernel doesn't do bit-reversal of the input, so this should be done on the host.
-  // In this scope, we verify that when the input is bit-reversed prior to being fed to 'cpu_func',
-  // we get the expected result:
-  {
-    auto refForwardFft = makeRefForwardFft(input); // this implementation has been well unit-tested in another project
-    auto cpuForwardFft = cpu_fft_norecursion(bitReversePermutation(input));
-    verifyVectorsAreEqual(refForwardFft, cpuForwardFft);
-  }
-  
   const unsigned int Sz = input.size(); // is assumed to be a power of 2
   
   auto twiddle = imajuscule::compute_roots_of_unity<float>(Sz);
@@ -81,6 +72,8 @@ int main(void) {
   CHECK_CL_ERROR(ret);
   ret = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&output_mem_obj);
   CHECK_CL_ERROR(ret);
+  ret = clSetKernelArg(kernel, 3, 2*sizeof(float) * 2*input.size(), NULL); // pingpong buffer
+  CHECK_CL_ERROR(ret);
 
   // Execute the OpenCL kernel on the list
   size_t global_item_size = input.size()/2; // the number of butterfly operations per fft level
@@ -98,7 +91,8 @@ int main(void) {
   CHECK_CL_ERROR(ret);
 
   // The output produced by the gpu is the same as the output produced by the cpu:
-  verifyVectorsAreEqual(output, cpu_fft_norecursion(input));
+  verifyVectorsAreEqual(output, makeRefForwardFft(input));
+  verifyVectorsAreEqual(cpu_fft_norecursion_stockham(input),makeRefForwardFft(input));
   
   // Clean up
   ret = clFlush(command_queue);

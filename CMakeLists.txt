@@ -16,6 +16,7 @@ set_property( TARGET
             PROPERTY
                      CXX_STANDARD 17 )
 
+# the 'SRC_ROOT' macro will contain the root path for kernel sources and includes:
 add_definitions ( -DSRC_ROOT=${CMAKE_SOURCE_DIR} )
 
 target_compile_options(gpgpu_test PUBLIC "$<$<CONFIG:DEBUG>:-g>")

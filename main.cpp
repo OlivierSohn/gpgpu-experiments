@@ -65,7 +65,7 @@
 //
 //    Several variations are possible, by using different kernels (see inside the source)
 //
-#include "main_fft_many_floats_local.cpp"    // for 8192 fft: 1300 us kernel time
+//#include "main_fft_many_floats_local.cpp"    // for 8192 fft: 1300 us kernel time
 
 // 6. This example computes an fft (Cooley-Tuckey radix-2, no bit-reversal of the input)
 //    on vectors of large sizes, using local memory to speed up the kernel,
@@ -74,3 +74,33 @@
 //#include "main_fft_many_floats_local_twiddles.cpp"
 
 
+// 7. This example computes an fft (Cooley-Tuckey radix-2, no bit-reversal of the input)
+//    on vectors of large sizes, using local memory to speed up the kernel,
+//    computing twiddle factors on the fly instead of reading them from memory,
+//    and where a separate representation for complex numbers is used to avoid bank conflicts:
+//
+//#include "main_fft_many_floats_local_twiddles_separate.cpp"
+
+
+// 8. This example computes an fft (Stockham radix-2)
+//    on a vector of 8 elements:
+//
+//#include "main_fft_8_floats_stockham.cpp"
+
+// 9. This example computes an fft (Stockham radix-2)
+//    on vectors of large sizes.
+//
+//#include "main_fft_many_floats_stockham.cpp"
+
+// 10. This example computes an fft (Stockham radix-2)
+//    on vectors of large sizes,
+//    computing twiddle factors on the fly instead of reading them from memory:
+//
+//#include "main_fft_many_floats_stockham_twiddles.cpp"
+
+// 11. This example computes an fft (Stockham radix-2)
+//    on vectors of large sizes,
+//    computing twiddle factors on the fly instead of reading them from memory,
+//    and where a separate representation for complex numbers is used to avoid bank conflicts:
+//
+#include "main_fft_many_floats_stockham_twiddles_separate.cpp"

@@ -26,7 +26,7 @@ And using the environment variable `CL_LOG_ERRORS=stdout` made debugging kernel 
 
 # Next Steps
 
-* see if storing real and imaginary partis in separate parts of the buffer helps for bank conflicts.
+* see if storing real and imaginary parts in separate parts of the buffer helps for bank conflicts.
 - see if stockham, or cooley tukey with rearranged indices helps for bank conflicts
 * see if we have bank conflicts on local memory (https://www.nvidia.com/content/GTC/documents/1068_GTC09.pdf)
 * (may need to change input layout first) Alternate global memory reads with computations for the first level to hide the compute time in the memory latency.

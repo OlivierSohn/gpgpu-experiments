@@ -1,13 +1,16 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                                   // Times for 4096 8192 fft //
+//                                                                                                        // Times for 8192 fft //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//constexpr auto kernel_file = "vector_fft_floats_multi_local_shifts_twiddles.cl";   // 472 us
-//constexpr auto kernel_file = "vector_fft_floats_multi_local_shifts_twiddles_constantinput.cl";   // 472 us
-constexpr auto kernel_file = "vector_fft_floats_multi_local_coalesce_shifts_twiddles.cl";   // 222 454 us
+// both the local and global buffers have separated complexs
+constexpr auto kernel_file = "vector_fft_floats_multi_local_coalesce_shifts_twiddles_separate.cl"; // 628 us
 
-bool withInput(cl_context context,
+// only the global buffer has separated complexs, and we writeback during the last butterfly
+//constexpr auto kernel_file = "vector_fft_floats_multi_local_coalesce_shifts_twiddles_separatebis.cl"; // 482 us
+
+
+void withInput(cl_context context,
                cl_device_id device_id,
                cl_command_queue command_queue,
                cl_kernel kernel,
@@ -21,8 +24,8 @@ bool withInput(cl_context context,
 
   verify(is_power_of_two(input.size()) && input.size() >= 2);
   
-  std::vector<std::complex<float>> output;
-  output.resize(input.size());
+  std::vector<float> output; // real buffer, imag buffer
+  output.resize(2*input.size());
   
   cl_ulong local_mem_sz;
   cl_int ret = clGetDeviceInfo(device_id,
@@ -30,7 +33,7 @@ bool withInput(cl_context context,
                                sizeof(local_mem_sz), &local_mem_sz, NULL);
   if(local_mem_sz < output.size() * sizeof(decltype(output[0]))) {
     std::cout << "not enough local memory on the device!" << std::endl;
-    return false;
+    return;
   }
 
   // Our GPU kernel doesn't do bit-reversal of the input, so this should be done on the host.
@@ -111,7 +114,7 @@ bool withInput(cl_context context,
   if(verifyResults) {
     std::cout << "verifying results... " << std::endl;
     // The output produced by the gpu is the same as the output produced by the cpu:
-    verifyVectorsAreEqual(output,
+    verifyVectorsAreEqual(unseparate(output),
                           cpu_fft_norecursion(input),
                           // getFFTEpsilon is assuming that the floating point errors "add up"
                           // at every butterfly operation, but like said here :
@@ -129,8 +132,6 @@ bool withInput(cl_context context,
   CHECK_CL_ERROR(ret);
   ret = clReleaseMemObject(output_mem_obj);
   CHECK_CL_ERROR(ret);
-
-  return true;
 }
 
 std::string ReplaceString(std::string subject, const std::string& search,
@@ -168,7 +169,9 @@ struct ScopedKernel {
       memset(buf, 0, sizeof(buf));
       snprintf(buf, sizeof(buf), "%a", (float)(-M_PI/nButterflies));
       
-      std::string const replaced_str = ReplaceString(ReplaceString(ReplaceString(ReplaceString(kernel_src,
+      std::string const replaced_str = ReplaceString(ReplaceString(ReplaceString(ReplaceString(ReplaceString(kernel_src,
+                                                                                                             "replace_INPUT_SIZE",
+                                                                                                             std::to_string(input_size)),
                                                                                                "replace_MINUS_PI_over_N_GLOBAL_BUTTERFLIES",
                                                                                                buf),
                                                                                  "replace_N_GLOBAL_BUTTERFLIES",
@@ -277,16 +280,14 @@ int main(void) {
     
     const ScopedKernel sc(context, device_id, kernel_src, input.size());
 
-    if(!withInput(context,
+    withInput(context,
               device_id,
               command_queue,
               sc.kernel,
               sc.nButterfliesPerThread,
               input,
               true // set this to true to verify results
-                  )) {
-      break;
-    }
+              );
   }
   
   // Clean up
