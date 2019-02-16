@@ -326,6 +326,9 @@ namespace imajuscule {
           }
           return;
         }
+
+        // radix-2
+        
         auto const double_stride = 2*stride;
         auto const half_N = N/2;
         // computes first half of result

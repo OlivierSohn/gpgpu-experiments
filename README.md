@@ -26,18 +26,18 @@ And using the environment variable `CL_LOG_ERRORS=stdout` made debugging kernel 
 
 # Next Steps
 
-* see if storing real and imaginary parts in separate parts of the buffer helps for bank conflicts.
-- see if stockham, or cooley tukey with rearranged indices helps for bank conflicts
-* see if we have bank conflicts on local memory (https://www.nvidia.com/content/GTC/documents/1068_GTC09.pdf)
-* (may need to change input layout first) Alternate global memory reads with computations for the first level to hide the compute time in the memory latency.
+* experiment changing the number of items in the workgroup (compensate with the numner of local butterflies):
+is it best to have a lot of items or a lot of local butterflies? Should we auto-tune that?
+* experiment changing the radix, auto-tune that.
 * use images to have faster access to global memory:
   * To have faster read only access to inputs, use an image + float4 read_imagef
   * To have fater write to output, use an image + write_imagef
   * read/write images are opencl 2.0 only, but in practice passing the image twice with different
 qualifiers can work, depending on the driver + hardware.
-* use images for twiddles, see if it is faster than computing them on the fly.
+* use images for twiddles, see if it is faster than computing them on the fly (especially for high precision, and double).
+* Alternate global memory reads with computations for the first level to hide the compute time in the memory latency.
 * use the idea in https://mc.stanford.edu/cgi-bin/images/7/75/SC08_FFT_on_GPUs.pdf where private memory is used
-* instead of doing all levels in a single kernel, try doing one kernel per level: the code will be more optimal because more stuff will be precomputed, and possibly less registers will be used. Use images to store results of each level.
+* instead of doing all levels in a single kernel, try doing one kernel per level, and use images to store intermediate results. The code will be more optimal because more stuff will be precomputed, and possibly less registers will be used.
 * To do big ffts using local memory, compute local levels in chunks, and when writing back, interleave the data
 and redo the same thing (except that twiddle factors indinces computation needs to adapt) until all levels are done.
 Finallly, reorder global memory (or let the cpu do it?)

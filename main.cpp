@@ -103,4 +103,11 @@
 //    computing twiddle factors on the fly instead of reading them from memory,
 //    and where a separate representation for complex numbers is used to avoid bank conflicts:
 //
-#include "main_fft_many_floats_stockham_twiddles_separate.cpp"
+//#include "main_fft_many_floats_stockham_twiddles_separate.cpp"
+
+// 12. This example computes an fft (Stockham radix-2)
+//    on vectors of large sizes,
+//    computing twiddle factors on the fly instead of reading them from memory
+//    using images instead of global memory for global input and output
+//
+#include "main_fft_many_floats_stockham_twiddles_images.cpp"
