@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
+#include <unordered_set>
 
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
@@ -73,6 +74,14 @@
 //
 //#include "main_fft_many_floats_local_twiddles.cpp"
 
+// 6.1 This example computes an fft (Cooley-Tuckey radix-2, no bit-reversal of the input)
+//    on vectors of huge sizes (using 2 different kernels to compute the fft, one for the first levels
+//    and the other for the last levels. The use of sequential kernels allow for global synchronization
+//    across workgroups), using local memory to speed up the kernel,
+//    and computing twiddle factors on the fly instead of reading them from memory:
+//
+#include "main_fft_huge_floats_local_twiddles.cpp"
+
 
 // 7. This example computes an fft (Cooley-Tuckey radix-2, no bit-reversal of the input)
 //    on vectors of large sizes, using local memory to speed up the kernel,
@@ -110,4 +119,4 @@
 //    computing twiddle factors on the fly instead of reading them from memory
 //    using images instead of global memory for global input and output
 //
-#include "main_fft_many_floats_stockham_twiddles_images.cpp"
+//#include "main_fft_many_floats_stockham_twiddles_images.cpp"

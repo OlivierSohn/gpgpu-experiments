@@ -9,4 +9,8 @@ namespace imajuscule {
     }
     return n;
   }
+  
+  constexpr bool isMultiple(int a, int b) {
+    return (a/b)*b == a;
+  }
 }

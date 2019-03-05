@@ -10,8 +10,6 @@ std::string fullpath(std::string const & file) {
   return std::string(src_root()) + "/" + file;
 }
 
-
-
 void get_file_contents(const std::string &filename, std::string & str )
 {
   std::ifstream in(filename, std::ios::in | std::ios::binary);

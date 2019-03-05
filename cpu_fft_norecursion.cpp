@@ -35,14 +35,18 @@ std::vector<std::complex<T>> unseparate(std::vector<T> const & v) {
 /*
  This is the cpu version of the gpu kernel, to test that our program works as intended.
  */
-auto cpu_fft_norecursion(std::vector<float> const & input) {
+auto cpu_fft_norecursion(std::vector<float> const & input, int maxLevel = -1) {
   const unsigned int Sz = input.size(); // is assumed to be a power of 2
   
   std::vector<std::complex<float>> output = complexify(input);
   
   auto twiddle = imajuscule::compute_roots_of_unity<float>(Sz);
   
-  for(int i=1; i<Sz; i <<= 1) {
+  if(maxLevel < 0) {
+    maxLevel = Sz;
+  }
+  
+  for(int i=1; i<maxLevel; i <<= 1) {
     for(int k = 0; k<Sz; k += 2*i) {
       for(int l=0; l<i; ++l) {
         int idx = k+l;
