@@ -36,7 +36,7 @@ std::vector<std::complex<T>> unseparate(std::vector<T> const & v) {
  This is the cpu version of the gpu kernel, to test that our program works as intended.
  */
 auto cpu_fft_norecursion(std::vector<float> const & input, int maxLevel = -1) {
-  const unsigned int Sz = input.size(); // is assumed to be a power of 2
+  const int Sz = input.size(); // is assumed to be a power of 2
   
   std::vector<std::complex<float>> output = complexify(input);
   
@@ -44,6 +44,9 @@ auto cpu_fft_norecursion(std::vector<float> const & input, int maxLevel = -1) {
   
   if(maxLevel < 0) {
     maxLevel = Sz;
+  }
+  else {
+    maxLevel = std::min(maxLevel, Sz);
   }
   
   for(int i=1; i<maxLevel; i <<= 1) {
@@ -64,9 +67,16 @@ inline int expand(int idxL, int N1, int N2) {
   // TODO optimize
 }
 
-auto cpu_fft_norecursion_stockham(std::vector<float> const & input) {
-  const unsigned int Sz = input.size(); // is assumed to be a power of 2
-  
+auto cpu_fft_norecursion_stockham(std::vector<float> const & input, int maxLevel = -1) {
+  const int Sz = input.size(); // is assumed to be a power of 2
+
+  if(maxLevel < 0) {
+    maxLevel = Sz;
+  }
+  else {
+    maxLevel = std::min(maxLevel, Sz);
+  }
+
   auto a=complexify(input);
   decltype(a) b;
   b.resize(input.size());
@@ -76,10 +86,11 @@ auto cpu_fft_norecursion_stockham(std::vector<float> const & input) {
   
   auto twiddle = imajuscule::compute_roots_of_unity<float>(Sz);
   
-  for(int i=1; i<Sz; i <<= 1) {
+  for(int i=1; i<maxLevel; i <<= 1) {
     for(int k = 0; k<Sz/2; k++) {
       std::complex<float> v[2];
-      float angle = -2.f*M_PI*(float)(k%i)/(float)(2*i);
+//      float angle = -2.f*M_PI*(float)(k%i)/(float)(2*i);
+      float angle = 0.f;
       auto twiddle = std::polar(1.f,angle);
       v[0] = (*prev)[k];
       v[1] = (*prev)[k+Sz/2] * twiddle;

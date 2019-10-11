@@ -126,33 +126,29 @@ correspondances(std::vector<T> const & a, std::vector<T> const & b, int min_corr
         continue;
       }
       // the next item is not a match.
-      if(res.back().length >= min_correspondance_length) {
-        in_correspondance = false;
-        continue;
+      in_correspondance = false;
+      if(res.back().length < min_correspondance_length) {
+        // the correspondance is short, so we rewind:
+        i -= res.back().length;
+        for(int l = res.back().idxB; l<res.back().endB(); ++l) {
+          b_used.erase(l);
+        }
+        // and we will start the search for a longer correspondance right after the beginning of the short one:
+        j = res.back().idxB + 1;
+        // and we drop the short correspondance
+        res.pop_back();
       }
-      // the correspondance is short, so we rewind:
-      i -= res.back().length;
-      for(int l = res.back().idxB; l<res.back().endB(); ++l) {
-        b_used.erase(l);
-      }
-      // and we will start the search for a longer correspondance right after the beginning of the short one:
-      j = res.back().idxB + 1;
-      // and we drop the short correspondance
-      res.pop_back();
     }
     // find the first matching j in b that is not already used in res
     for( ;j < szb; ++j) {
-      if(b_used.find(j) != b_used.end()) {
-        continue;
-      }
-      if(close(b[j],a[i],epsilon)) {
+      if(b_used.find(j) == b_used.end() &&
+         close(a[i],b[j],epsilon)) {
+        // we found a match
+        b_used.emplace(j);
+        in_correspondance = true;
+        res.emplace_back(i,j);
         break;
       }
-    }
-    if(j<szb) {
-      // we found a match
-      in_correspondance = true;
-      res.emplace_back(i,j);
     }
   }
   return res;
@@ -173,11 +169,14 @@ void verifyVectorsAreEqual(std::vector<T> const & a, std::vector<T> const & b, f
     std::cout << r.first << ": " << n << " " << (ok ? "success" : "error") << std::endl;
   }
   
-  auto corr = correspondances(a, b, 10, epsilon);
+  auto corr = correspondances(a, b, 1, epsilon);
+  int total = 0;
   for(auto const & c : corr) {
     std::cout << c.idxA << " - " << c.endA() << " -> " << c.idxB << " " << c.endB() << std::endl;
+    total += c.length;
   }
-  
+  std::cout << "Total matches : " << total << std::endl;
+
   kill();
 
 }

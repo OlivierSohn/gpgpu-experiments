@@ -38,12 +38,7 @@ qualifiers can work, depending on the driver + hardware.
 * Alternate global memory reads with computations for the first level to hide the compute time in the memory latency.
 * use the idea in https://mc.stanford.edu/cgi-bin/images/7/75/SC08_FFT_on_GPUs.pdf where private memory is used
 * instead of doing all levels in a single kernel, try doing one kernel per level, and use images to store intermediate results. The code will be more optimal because more stuff will be precomputed, and possibly less registers will be used.
-* To do big ffts using local memory, compute local levels in chunks, and when writing back, interleave the data
-and redo the same thing (except that twiddle factors indinces computation needs to adapt) until all levels are done.
-Finallly, reorder global memory (or let the cpu do it?)
-* use inter-group synchronization to be able to use multiple work groups for a single fft.
-http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.172.2399&rep=rep1&type=pdf 
-https://www.doc.ic.ac.uk/~afd/homepages/papers/pdfs/2016/OOPSLA.pdf
+* Try stockham for big ffts.
 * Compare with other (open source) fft implementations on the gpu (for example, https://github.com/clMathLibraries/clFFT)
 * Implement in-place fft.
 

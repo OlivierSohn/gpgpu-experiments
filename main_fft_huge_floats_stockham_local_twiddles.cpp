@@ -3,10 +3,27 @@
 //                                                                                                   // Times for 4096 8192 fft //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-constexpr auto kernel_file = "vector_fft_floats_huge_local_coalesce_shifts_twiddles.cl";
+constexpr auto kernel_file = "vector_fft_floats_stockham_huge_local_coalesce_shifts_twiddles.cl";
 
 using T = float;
 
+std::vector<std::complex<T>> constant(float f, int sz) {
+  std::vector<std::complex<T>> res;
+  res.reserve(sz);
+  for(int i=0; i<sz; ++i) {
+    res.emplace_back(f,0.f);
+  }
+  return res;
+}
+
+std::vector<std::complex<T>> complexsFromReals(std::vector<T> const & v) {
+  std::vector<std::complex<T>> res;
+  res.reserve(v.size());
+  for(auto e:v) {
+    res.emplace_back(e,0.f);
+  }
+  return res;
+}
 bool withInput(cl_context context,
                cl_device_id device_id,
                cl_command_queue command_queue,
@@ -30,14 +47,14 @@ bool withInput(cl_context context,
   // In this scope, we verify that when the input is bit-reversed prior to being fed to 'cpu_func',
   // we get the expected result:
   if(verifyResults)
-  {
+  {/*
     std::cout << "- make ref 1" << std::endl;
     auto refForwardFft = makeRefForwardFft(input); // this implementation has been well unit-tested in another project
     std::cout << "- make ref 2" << std::endl;
     auto cpuForwardFft = cpu_fft_norecursion(bitReversePermutation(input));
     std::cout << "- verify consistency" << std::endl;
     verifyVectorsAreEqual(refForwardFft, cpuForwardFft);
-    std::cout << "- ok" << std::endl;
+    std::cout << "- ok" << std::endl;*/
   }
   
   // Create memory buffers on the device for each vector
@@ -56,54 +73,63 @@ bool withInput(cl_context context,
   CHECK_CL_ERROR(ret);
   
   // Set the arguments of the kernels
-  ret = clSetKernelArg(kernel1, 0, (output.size() * sizeof(decltype(output[0]))) / nWorkgroups, NULL); // local memory
+  ret = clSetKernelArg(kernel1, 0, sizeof(cl_mem), (void *)&input_mem_obj);
   CHECK_CL_ERROR(ret);
-  ret = clSetKernelArg(kernel1, 1, sizeof(cl_mem), (void *)&input_mem_obj);
+  ret = clSetKernelArg(kernel1, 1, sizeof(cl_mem), (void *)&output_mem_obj);
   CHECK_CL_ERROR(ret);
-  ret = clSetKernelArg(kernel1, 2, sizeof(cl_mem), (void *)&output_mem_obj);
+  // the factor 2 is because we ping pong between two buffers.
+  ret = clSetKernelArg(kernel1, 2, (2 * output.size() * sizeof(decltype(output[0]))) / nWorkgroups, NULL); // local memory
   CHECK_CL_ERROR(ret);
-
-  ret = clSetKernelArg(kernel2, 0, (output.size() * sizeof(decltype(output[0]))) / nWorkgroups, NULL); // local memory
+  
+  // the factor 2 is because we ping pong between two buffers.
+  ret = clSetKernelArg(kernel2, 0, (2 * output.size() * sizeof(decltype(output[0]))) / nWorkgroups, NULL); // local memory
   CHECK_CL_ERROR(ret);
   ret = clSetKernelArg(kernel2, 1, sizeof(cl_mem), (void *)&output_mem_obj);
   CHECK_CL_ERROR(ret);
-
+  
   // Execute the OpenCL kernel
   size_t global_item_size = input.size()/(2*nButterfliesPerThread);
   size_t local_item_size = global_item_size/nWorkgroups;
   std::cout << "run kernels using global size : " << global_item_size << std::endl;
   
   double elapsed = 0.;
-
+  
   int nIterations = 3000;
   constexpr int nSkipIterations = 1;
   for(int i=0; i<nSkipIterations+nIterations; ++i)
   {
     cl_event event[2];
-    int nKernels = (nWorkgroups == 1) ? 1 : 2;
-    if(nWorkgroups == 1) {
-      ret = clEnqueueNDRangeKernel(command_queue, kernel1, 1, NULL,
-                                   &global_item_size,
-                                   &local_item_size,
-                                   0, NULL, event);
-    }
-    else {
-      ret = clEnqueueNDRangeKernel(command_queue, kernel1, 1, NULL,
-                                   &global_item_size,
-                                   &local_item_size,
-                                   0, NULL, event);
-      CHECK_CL_ERROR(ret);
-      ret = clEnqueueNDRangeKernel(command_queue, kernel2, 1, NULL,
-                                   &global_item_size,
-                                   &local_item_size,
-                                   0, NULL, event+1);
-      CHECK_CL_ERROR(ret);
-    }
-
+    /*int nKernels = (nWorkgroups == 1) ? 1 : 2;
+     if(nWorkgroups == 1) {
+     ret = clEnqueueNDRangeKernel(command_queue, kernel1, 1, NULL,
+     &global_item_size,
+     &local_item_size,
+     0, NULL, event);
+     }
+     else {
+     ret = clEnqueueNDRangeKernel(command_queue, kernel1, 1, NULL,
+     &global_item_size,
+     &local_item_size,
+     0, NULL, event);
+     CHECK_CL_ERROR(ret);
+     ret = clEnqueueNDRangeKernel(command_queue, kernel2, 1, NULL,
+     &global_item_size,
+     &local_item_size,
+     0, NULL, event+1);
+     CHECK_CL_ERROR(ret);
+     }*/
+    
+    // debug : test first kernel
+    int nKernels = 1;
+    ret = clEnqueueNDRangeKernel(command_queue, kernel1, 1, NULL,
+                                 &global_item_size,
+                                 &local_item_size,
+                                 0, NULL, event);
+    
     // triggers SIGABRT when the kernel exceeds the hardware duration limit
     ret = clWaitForEvents(1, event+nKernels-1);
     CHECK_CL_ERROR(ret);
-
+    
     // skip first measurements
     if(i<nSkipIterations) {
       continue;
@@ -130,7 +156,7 @@ bool withInput(cl_context context,
   }
   std::cout << "avg kernel duration (us) : " << (elapsed/(double)nIterations)/1000 <<
   " over " << nIterations << " iterations. " << std::endl;
-
+  
   ret = clEnqueueReadBuffer(command_queue,
                             output_mem_obj, CL_TRUE, 0,
                             output.size() * sizeof(decltype(output[0])), &output[0], 0, NULL, NULL);
@@ -141,7 +167,15 @@ bool withInput(cl_context context,
     std::cout << "verifying results... " << std::endl;
     // The output produced by the gpu is the same as the output produced by the cpu:
     verifyVectorsAreEqual(output,
-                          cpu_fft_norecursion(input),
+                          //complexsFromReals(input),
+                          //constant(2.f,output.size()),
+
+                          // the first level produces correct results
+                          // but subsequent levels produce less and less accurate results.
+                          // first level (2) has 8192 matches.
+                          // second level (4) has 3517 matches.
+                          cpu_fft_norecursion_stockham(input, 4/*8192/2*/),
+                          //cpu_fft_norecursion_stockham(input),
                           // getFFTEpsilon is assuming that the floating point errors "add up"
                           // at every butterfly operation, but like said here :
                           // https://floating-point-gui.de/errors/propagation/
@@ -149,10 +183,9 @@ bool withInput(cl_context context,
                           // which are used in butterfly operations.
                           // Hence I replace the following line with 0.001f:
                           //20.f*getFFTEpsilon<T>(input.size()),
-                          0.001f
+                          0.00001f
                           );
   }
-
   
   // Cleanup
   ret = clReleaseMemObject(input_mem_obj);
@@ -313,17 +346,19 @@ int main(void) {
   //
   // We could query CL_DEVICE_GLOBAL_MEM_SIZE / CL_DEVICE_MAX_MEM_ALLOC_SIZE
   // and deduce an upper bound for 'sz'.
-  for(int sz=2; sz < 100000000; sz *= 2) {
+  for(int sz=8192/*2*/; sz < 100000000; sz *= 2) {
     std::cout << std::endl << "* input size: " << sz << std::endl;
     
     // Create the input vector
     std::vector<T> input;
     input.reserve(sz);
     for(int i=0; i<sz; ++i) {
-      input.push_back(rand_float(0.f,1.f));
+//      input.push_back(rand_float(0.f,1.f));
+      input.push_back(i);
     }
     
-    int const minNWorkgroups = 1 + (input.size() * sizeof(std::complex<T>) - 1) / local_mem_sz;
+    // the factor 2 is because stockham algorithm uses a ping pong algorithm
+    int const minNWorkgroups = 1 + (2 * input.size() * sizeof(std::complex<T>) - 1) / local_mem_sz;
     std::cout << "using " << minNWorkgroups << " workgroup(s)." << std::endl;
 
     const ScopedKernel sc(context, device_id, kernel_src, input.size(), minNWorkgroups);

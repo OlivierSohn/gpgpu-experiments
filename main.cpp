@@ -80,7 +80,15 @@
 //    across workgroups), using local memory to speed up the kernel,
 //    and computing twiddle factors on the fly instead of reading them from memory:
 //
-#include "main_fft_huge_floats_local_twiddles.cpp"
+//#include "main_fft_huge_floats_local_twiddles.cpp"
+
+// 6.2 This example computes an fft (Stockham radix-2)
+//    on vectors of huge sizes (using 2 different kernels to compute the fft, one for the first levels
+//    and the other for the last levels. The use of sequential kernels allow for global synchronization
+//    across workgroups), using local memory to speed up the kernel,
+//    and computing twiddle factors on the fly instead of reading them from memory:
+//
+#include "main_fft_huge_floats_stockham_local_twiddles.cpp"
 
 
 // 7. This example computes an fft (Cooley-Tuckey radix-2, no bit-reversal of the input)

@@ -84,8 +84,8 @@ __kernel void last_butterflies(__local struct cplx* output,
     }
   }
   
-  int const firstSz = (2 * N_GLOBAL_BUTTERFLIES) / nGroups; // 8192
-  int const firstLocalSz = (2 * N_LOCAL_BUTTERFLIES * get_local_size(0)) / nGroups; // 2048
+  int const firstSz = (2 * N_GLOBAL_BUTTERFLIES) / nGroups;
+  int const firstLocalSz = (2 * N_LOCAL_BUTTERFLIES * get_local_size(0)) / nGroups;
 
   // i = size of a butterfly half
   // LOG2_N_GLOBAL_BUTTERFLIES_over_i = log2(N_GLOBAL_BUTTERFLIES / i)
